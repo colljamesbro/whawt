@@ -1,0 +1,91 @@
+-- LocalScript for GUI lock-on system with team color check (avoids Blue team)
+
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local targetPlayer = nil  -- Store the target player to lock onto
+local targetPart = nil  -- The part of the target player we will aim at (e.g., HumanoidRootPart)
+local locked = false  -- Whether or not we are locked onto a target
+
+-- Create the main GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player.PlayerGui  -- Parent it to PlayerGui to make it visible
+
+-- Create the Lock-On Button
+local lockButton = Instance.new("TextButton")
+lockButton.Size = UDim2.new(0, 200, 0, 50)
+lockButton.Position = UDim2.new(0.5, -100, 0.8, -25)
+lockButton.Text = "Lock-On (Inactive)"
+lockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+lockButton.TextSize = 24
+lockButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red to show inactive
+lockButton.Parent = screenGui  -- Parent it to the screenGui to make it show up
+
+-- Function to lock onto a target
+local function lockOntoTarget()
+    -- Loop through all players
+    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            -- Check if the player is not on the same team (specifically avoiding "Blue" team)
+            if otherPlayer.TeamColor ~= player.TeamColor then
+                local character = otherPlayer.Character
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                
+                -- If the player has a humanoidRootPart, lock onto them
+                if humanoidRootPart then
+                    targetPlayer = otherPlayer
+                    targetPart = humanoidRootPart
+                    locked = true
+                    break
+                end
+            end
+        end
+    end
+end
+
+-- Function to shoot at the locked player
+local function shootAtTarget()
+    if targetPlayer and targetPart then
+        local direction = (targetPart.Position - mouse.Hit.p).unit  -- Direction to aim
+        local rayOrigin = mouse.Hit.p
+        local ray = Ray.new(rayOrigin, direction * 1000)  -- Create a ray towards the target
+
+        local hitPart, hitPosition = game.Workspace:FindPartOnRay(ray, player.Character, false, true)
+        
+        -- Handle what happens when the ray hits (e.g., damage the target, show effects, etc.)
+        if hitPart then
+            print("Hit: " .. hitPart.Name)  -- Example action: printing hit part
+            -- Here you could implement further actions, like damaging the player or showing effects
+        end
+    end
+end
+
+-- Handle clicking the lock-on button
+lockButton.MouseButton1Click:Connect(function()
+    if not locked then
+        -- Lock onto the nearest player who is not on the same team (avoiding Blue team)
+        lockOntoTarget()
+        
+        -- Change button color to green (indicating it's active)
+        lockButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)  -- Green
+        lockButton.Text = "Lock-On (Active)"
+    end
+end)
+
+-- Shoot when the left mouse button is clicked
+mouse.Button1Down:Connect(function()
+    if locked then
+        shootAtTarget()
+    end
+end)
+
+-- Reset lock when the "R" key is pressed
+mouse.KeyDown:Connect(function(key)
+    if key == "r" then
+        locked = false
+        targetPlayer = nil
+        targetPart = nil
+        lockButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red
+        lockButton.Text = "Lock-On (Inactive)"
+    end
+end)
